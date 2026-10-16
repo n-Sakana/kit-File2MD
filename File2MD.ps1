@@ -1,0 +1,261 @@
+﻿[CmdletBinding(PositionalBinding = $false)]
+param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$File2MDArguments
+)
+
+Set-StrictMode -Version 2
+$ErrorActionPreference = 'Stop'
+$startupFailureExitCode = 3
+
+function Write-File2MDLauncherLog {
+    param(
+        [string]$Level,
+        [string]$Message
+    )
+
+    try {
+        $localData = [Environment]::GetFolderPath(
+            [Environment+SpecialFolder]::LocalApplicationData)
+        if ([string]::IsNullOrWhiteSpace($localData)) {
+            return
+        }
+
+        $logDirectory = Join-Path $localData 'File2MD\logs'
+        if (-not (Test-Path -LiteralPath $logDirectory -PathType Container)) {
+            New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
+        }
+
+        $logPath = Join-Path $logDirectory (
+            'File2MD_' + (Get-Date -Format 'yyyyMMdd') + '.log')
+        $line = '[' + (Get-Date -Format 'HH:mm:ss') + '] ' +
+            '[' + $Level + '] ' + $Message
+        [IO.File]::AppendAllText(
+            $logPath,
+            $line + [Environment]::NewLine,
+            (New-Object Text.UTF8Encoding($false)))
+    }
+    catch {
+    }
+}
+
+function Get-File2MDRuntimeKey {
+    if ($PSVersionTable.PSEdition -eq 'Desktop') {
+        return 'netfx48-win'
+    }
+
+    $platform = if ([System.IO.Path]::DirectorySeparatorChar -eq '\') { 'win' } else { 'unix' }
+    return 'net{0}-{1}' -f [Environment]::Version.Major, $platform
+}
+
+function Get-File2MDCacheBase {
+    $cacheBase = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    if (-not [string]::IsNullOrWhiteSpace($cacheBase)) {
+        return $cacheBase
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($env:XDG_CACHE_HOME)) {
+        return $env:XDG_CACHE_HOME
+    }
+
+    $profileFolder = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+    if ([string]::IsNullOrWhiteSpace($profileFolder)) {
+        throw 'File2MD could not find a per-user cache folder.'
+    }
+
+    return Join-Path $profileFolder '.cache'
+}
+
+function Get-File2MDSourceHash {
+    param(
+        [System.IO.FileInfo[]]$SourceFiles,
+        [string]$RuntimeKey
+    )
+
+    $hash = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $prefix = "ferry-add-type-cache-v1" + [char]0 + $RuntimeKey + [char]0
+        $header = [Text.Encoding]::UTF8.GetBytes($prefix)
+        [void]$hash.TransformBlock($header, 0, $header.Length, $header, 0)
+
+        foreach ($file in $SourceFiles) {
+            $name = [Text.Encoding]::UTF8.GetBytes($file.Name + [char]0)
+            [void]$hash.TransformBlock($name, 0, $name.Length, $name, 0)
+
+            $bytes = [IO.File]::ReadAllBytes($file.FullName)
+            if ($bytes.Length -gt 0) {
+                [void]$hash.TransformBlock($bytes, 0, $bytes.Length, $bytes, 0)
+            }
+        }
+
+        $empty = New-Object byte[] 0
+        [void]$hash.TransformFinalBlock($empty, 0, 0)
+        return ([BitConverter]::ToString($hash.Hash)).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $hash.Dispose()
+    }
+}
+
+function Get-File2MDCombinedSource {
+    param([System.IO.FileInfo[]]$SourceFiles)
+
+    $combined = ($SourceFiles | ForEach-Object {
+        [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::UTF8)
+    }) -join [Environment]::NewLine
+
+    $usingPattern = '(?m)^\s*using\s+[A-Za-z_][A-Za-z0-9_.]*\s*;\s*$'
+    $usings = [regex]::Matches($combined, $usingPattern) |
+        ForEach-Object { $_.Value.Trim() } |
+        Sort-Object -Unique
+    $body = [regex]::Replace($combined, $usingPattern, '')
+    return ($usings -join [Environment]::NewLine) +
+        [Environment]::NewLine + [Environment]::NewLine + $body
+}
+
+try {
+    $isWindowsPowerShell = $PSVersionTable.PSEdition -eq 'Desktop'
+    $desktopSourceNames = @(
+        'DesktopApp.cs'
+        'DesktopWindow.cs'
+        'WebViewSecurity.cs'
+    )
+
+    $sourceDirectory = Join-Path $PSScriptRoot 'src'
+    $sourceFiles = if (Test-Path -LiteralPath $sourceDirectory -PathType Container) {
+        @(Get-ChildItem -LiteralPath $sourceDirectory -Filter '*.cs' -File -Recurse |
+            Where-Object {
+                $isWindowsPowerShell -or
+                    $desktopSourceNames -notcontains $_.Name
+            } |
+            Sort-Object FullName)
+    }
+    else {
+        @()
+    }
+    if ($sourceFiles.Count -eq 0) {
+        throw "No C# source files were found under src."
+    }
+
+    $webDirectory = Join-Path $PSScriptRoot 'web'
+    $webFiles = if (Test-Path -LiteralPath $webDirectory -PathType Container) {
+        @(Get-ChildItem -LiteralPath $webDirectory -File | Sort-Object Name)
+    }
+    else {
+        @()
+    }
+    $libraryDirectory = Join-Path $PSScriptRoot 'lib'
+    $libraryFiles = if (Test-Path -LiteralPath $libraryDirectory -PathType Container) {
+        @(Get-ChildItem -LiteralPath $libraryDirectory -File | Sort-Object Name)
+    }
+    else {
+        @()
+    }
+
+    $webViewAssemblies = @()
+    if ($isWindowsPowerShell) {
+        Add-Type -AssemblyName PresentationFramework
+        Add-Type -AssemblyName PresentationCore
+        Add-Type -AssemblyName WindowsBase
+        Add-Type -AssemblyName System.Xaml
+        Add-Type -AssemblyName System.Drawing
+
+        $env:Path = $libraryDirectory + [IO.Path]::PathSeparator + $env:Path
+        $webViewAssemblies = @(
+            (Join-Path $libraryDirectory 'Microsoft.Web.WebView2.Core.dll')
+            (Join-Path $libraryDirectory 'Microsoft.Web.WebView2.Wpf.dll')
+        )
+        foreach ($webViewAssembly in $webViewAssemblies) {
+            if (-not (Test-Path -LiteralPath $webViewAssembly -PathType Leaf)) {
+                throw "Required WebView2 assembly is missing: $webViewAssembly"
+            }
+
+            # Read the bytes instead of using LoadFrom. A zip-downloaded copy
+            # can carry Mark of the Web, which makes LoadFrom fail with
+            # HRESULT 0x80131515 on Windows PowerShell 5.1.
+            [Reflection.Assembly]::Load(
+                [IO.File]::ReadAllBytes($webViewAssembly)) | Out-Null
+        }
+    }
+
+    $buildFiles = @($sourceFiles) + @($webFiles) + @($libraryFiles)
+    $runtimeKey = Get-File2MDRuntimeKey
+    $sourceHash = Get-File2MDSourceHash -SourceFiles $buildFiles -RuntimeKey $runtimeKey
+    $cacheRoot = Join-Path (Get-File2MDCacheBase) 'File2MD\add-type-cache-v1'
+    $cacheDirectory = Join-Path (Join-Path $cacheRoot $runtimeKey) $sourceHash
+    $assemblyPath = Join-Path $cacheDirectory 'File2MD.Host.dll'
+    $readyPath = Join-Path $cacheDirectory 'complete'
+
+    if (-not ((Test-Path -LiteralPath $assemblyPath -PathType Leaf) -and
+              (Test-Path -LiteralPath $readyPath -PathType Leaf))) {
+        [void](New-Item -ItemType Directory -Path $cacheDirectory -Force)
+        $temporaryAssembly = Join-Path $cacheDirectory ("File2MD.Host.{0}.tmp.dll" -f $PID)
+
+        try {
+            Write-Host ("Compiling File2MD C# for {0}..." -f $runtimeKey)
+            $source = Get-File2MDCombinedSource -SourceFiles $sourceFiles
+            if ($isWindowsPowerShell) {
+                Add-Type -AssemblyName System.IO.Compression
+                Add-Type -AssemblyName System.IO.Compression.FileSystem
+                $references = @(
+                    [System.Windows.Window].Assembly.Location
+                    [System.Windows.UIElement].Assembly.Location
+                    [System.Windows.DependencyObject].Assembly.Location
+                    [System.Xaml.XamlReader].Assembly.Location
+                    'System.Drawing'
+                    'System.IO.Compression'
+                    'System.IO.Compression.FileSystem'
+                    'System.Xml'
+                ) + $webViewAssemblies
+                Add-Type -TypeDefinition $source `
+                    -OutputAssembly $temporaryAssembly `
+                    -OutputType Library `
+                    -ReferencedAssemblies $references
+            }
+            else {
+                $referenceDirectory = Join-Path $PSHOME 'ref'
+                if (-not (Test-Path -LiteralPath $referenceDirectory -PathType Container)) {
+                    throw "PowerShell reference assemblies were not found: $referenceDirectory"
+                }
+                $frameworkAssemblies = @(
+                    Get-ChildItem -LiteralPath $referenceDirectory -Filter '*.dll' -File |
+                        Select-Object -ExpandProperty FullName)
+                $coreSource = "#define NET9_0_OR_GREATER`n" + $source
+                Add-Type -TypeDefinition $coreSource `
+                    -OutputAssembly $temporaryAssembly `
+                    -OutputType Library `
+                    -ReferencedAssemblies @($frameworkAssemblies)
+            }
+
+            if (Test-Path -LiteralPath $assemblyPath -PathType Leaf) {
+                Remove-Item -LiteralPath $assemblyPath -Force
+            }
+            Move-Item -LiteralPath $temporaryAssembly -Destination $assemblyPath
+            [IO.File]::WriteAllText($readyPath, $sourceHash, [Text.Encoding]::ASCII)
+        }
+        finally {
+            if (Test-Path -LiteralPath $temporaryAssembly -PathType Leaf) {
+                Remove-Item -LiteralPath $temporaryAssembly -Force
+            }
+        }
+    }
+    else {
+        Write-Host ("Using cached File2MD C# for {0}." -f $runtimeKey)
+    }
+
+    [void][Reflection.Assembly]::LoadFrom($assemblyPath)
+    $env:File2MD_BUILD_ID = $sourceHash
+    $exitCode = [File2MD.Program]::Run($PSScriptRoot, [string[]]$File2MDArguments)
+    exit $exitCode
+}
+catch {
+    $location = ''
+    if ($null -ne $_.InvocationInfo) {
+        $location = ' (' + $_.InvocationInfo.ScriptName + ':' +
+            $_.InvocationInfo.ScriptLineNumber + ')'
+    }
+    $detail = 'launcher failed' + $location + ' ' + $_.Exception.ToString()
+    Write-File2MDLauncherLog 'ERROR' $detail
+    [Console]::Error.WriteLine('File2MD: ' + $detail)
+    exit $startupFailureExitCode
+}
