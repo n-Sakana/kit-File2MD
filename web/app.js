@@ -21,8 +21,8 @@
       state.status = await requestJson("/api/status"); state.role = state.status.role;
       document.documentElement.classList.add("role-local"); document.getElementById("appShell").dataset.role = "local";
       document.getElementById("deviceName").textContent = state.status.device;
-      setCapability("statusWord", state.status.capabilities.word ? "見つかった" : "なし", state.status.capabilities.word);
-      setCapability("statusOcr", state.status.capabilities.windowsOcr ? "対象" : "なし", state.status.capabilities.windowsOcr);
+      setCapability("statusWord", state.status.capabilities.word ? "Detected" : "Not detected", state.status.capabilities.word);
+      setCapability("statusOcr", state.status.capabilities.windowsOcr ? "Yes" : "No", state.status.capabilities.windowsOcr);
       applyFolder("markdown", await requestJson("/api/folder?mode=markdown"));
       setPickerDisabled(state.role !== "local"); updateMarkdownAction(); updateOutputAction("markdown");
     } catch (error) { showToast(errorMessage(error)); }
@@ -86,7 +86,7 @@
     var dark = isDarkThemeActive();
     document.querySelectorAll("[data-theme-toggle]").forEach(function (button) {
       button.setAttribute("aria-pressed", dark ? "true" : "false");
-      button.setAttribute("aria-label", dark ? "ライトにする" : "ダークにする");
+      button.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
     });
   }
 
@@ -188,7 +188,7 @@
     }).map(function (file) { return file.name; }));
 
     document.querySelectorAll("[data-folder-path='" + mode + "']").forEach(function (element) {
-      var displayPath = selectedSource && selectedSource.path ? selectedSource.path : "選ばれていません";
+      var displayPath = selectedSource && selectedSource.path ? selectedSource.path : "No input selected";
       element.textContent = displayPath;
       element.title = selectedSource && selectedSource.path ? selectedSource.path : "";
     });
@@ -220,7 +220,7 @@
     if (files.length === 0) {
       appendMessage(
         container,
-        mode === "markdown" ? "Markdown 化できるファイルはありません" : "ファイルはありません",
+        mode === "markdown" ? "No files are available for Markdown conversion" : "No files",
         "empty-state");
       return;
     }
@@ -373,7 +373,7 @@
       mode,
       "/api/pick-folder?mode=" + encodeURIComponent(mode),
       { method: "POST" },
-      "フォルダを開きました");
+      "Folder selected");
   }
 
   async function chooseFiles(mode) {
@@ -389,7 +389,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: mode })
       },
-      "ファイルを開きました");
+      "Files selected");
   }
 
   async function openNativePicker(mode, url, options, successMessage) {
@@ -400,7 +400,7 @@
         return;
       }
       if (!result.folder) {
-        throw new Error("選んだものを読み込めませんでした。");
+        throw new Error("Could not load the selected files or folder.");
       }
       applyFolder(mode, result.folder);
       showToast(successMessage);
@@ -436,7 +436,7 @@
       if (excludeLargeFiles === null) { return; }
       clearMarkdownResult();
       button.setAttribute("aria-busy", "true");
-      button.textContent = "Markdown 化しています…";
+      button.textContent = "Converting to Markdown…";
       var result = await requestJson("/api/markdown", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -454,18 +454,18 @@
       updateOutputAction("markdown");
 
       if (result.convertedCount === 0 && result.failedCount === 0) {
-        showToast("対象外の一覧を書き出しました");
+        showToast("Omitted file list saved");
       } else if (result.failedCount > 0) {
-        showToast(result.convertedCount + " 件を Markdown 化しました。" + result.failedCount + " 件は読み取れませんでした。 ");
+        showToast("Converted: " + result.convertedCount + ". Could not read: " + result.failedCount + ".");
       } else {
-        showToast(result.convertedCount + " 件を Markdown 化しました");
+        showToast("Files converted to Markdown: " + result.convertedCount);
       }
     } catch (error) {
       showToast(errorMessage(error));
     } finally {
       state.markdownBusy = false;
       button.removeAttribute("aria-busy");
-      button.textContent = "Markdown にする";
+      button.textContent = "Convert to Markdown";
       updateMarkdownAction();
     }
   }
@@ -489,7 +489,7 @@
       total += file.size;
     });
     document.getElementById("markdownLargeTotal").textContent =
-      "1 MB を超えるファイルが " + large.length + " 件、合計 " + formatBytes(total) + " あります。";
+      "Files over 1 MiB: " + large.length + " (total: " + formatBytes(total) + ").";
     dialog.returnValue = "";
     return new Promise(function (resolve) {
       dialog.addEventListener("close", function () {
@@ -506,7 +506,7 @@
       || state.role !== "local"
       || (state.selections.markdown.size === 0 && !omissionsOnly);
     if (!state.markdownBusy) {
-      button.textContent = omissionsOnly ? "対象外の一覧を書き出す" : "Markdown にする";
+      button.textContent = omissionsOnly ? "Export omitted file list" : "Convert to Markdown";
     }
   }
 
@@ -520,7 +520,7 @@
     state.folders[mode] = null;
     state.selections[mode] = new Set();
     document.querySelectorAll("[data-folder-path='" + mode + "']").forEach(function (element) {
-      element.textContent = "選ばれていません";
+      element.textContent = "No input selected";
       element.title = "";
     });
     renderFiles(mode);
@@ -615,7 +615,7 @@
       var body;
       try { body = await response.json(); } catch (_) { body = null; }
       if (!response.ok || body === null) {
-        var error = new Error(body && body.error ? body.error : "File2MD に接続できませんでした。");
+        var error = new Error(body && body.error ? body.error : "Could not connect to File2MD.");
         error.status = response.ok ? 502 : response.status;
         throw error;
       }
@@ -649,7 +649,7 @@
   }
 
   function errorMessage(error) {
-    return error && error.message ? error.message : "File2MD の処理中にエラーが起きました。";
+    return error && error.message ? error.message : "File2MD encountered an error.";
   }
 
   function folderLeaf(path) { var parts = String(path || "output").split(/[\\/]/).filter(Boolean); return parts.length ? parts[parts.length - 1] : "output"; }
@@ -668,7 +668,7 @@
     if (bytes < 1024) {
       return bytes + " B";
     }
-    var units = ["KB", "MB", "GB", "TB"];
+    var units = ["KiB", "MiB", "GiB", "TiB"];
     var size = bytes;
     var unit = -1;
     do {
@@ -676,7 +676,7 @@
       unit++;
     } while (size >= 1024 && unit < units.length - 1);
     var digits = size >= 100 ? 0 : size >= 10 ? 1 : 1;
-    return size.toLocaleString("ja-JP", { maximumFractionDigits: digits }) + " " + units[unit];
+    return size.toLocaleString("en-US", { maximumFractionDigits: digits }) + " " + units[unit];
   }
 
   function formatDate(value) {

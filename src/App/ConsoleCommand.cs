@@ -26,7 +26,7 @@ namespace File2MD
                 if (files.Count == 0 && !(mode == "markdown" && MarkdownService.CanWriteOnlyOmissions(source)))
                 {
                     throw new InvalidOperationException(
-                        "Markdown 化できるファイルがありません。");
+                        "No files are available for Markdown conversion.");
                 }
 
                 WriteHeader(mode, source, files);
@@ -181,13 +181,13 @@ namespace File2MD
             if (large.Count == 0) return false;
             long total = 0;
             Console.WriteLine();
-            Console.WriteLine("Files larger than 1 MB:");
+            Console.WriteLine("Files larger than 1 MiB:");
             foreach (var file in large)
             {
                 Console.WriteLine("  {0}  {1}", OneLine(file.Name), FormatSize(file.Size));
                 total += file.Size;
             }
-            Console.WriteLine("Total: {0} file(s), {1}", large.Count, FormatSize(total));
+            Console.WriteLine("Files: {0}; total size: {1}", large.Count, FormatSize(total));
             if (Console.IsInputRedirected)
             {
                 Console.WriteLine("No interactive input: excluding these files (names will be listed).");
@@ -231,7 +231,7 @@ namespace File2MD
 
         private static string ModeName(string mode)
         {
-            return "Markdown 化";
+            return "Markdown conversion";
         }
 
         private static string OneLine(string value)
@@ -250,7 +250,7 @@ namespace File2MD
 
         private static string FormatSize(long size)
         {
-            string[] units = { "B", "KB", "MB", "GB" };
+            string[] units = { "B", "KiB", "MiB", "GiB" };
             double value = size;
             var unit = 0;
             while (value >= 1024 && unit < units.Length - 1)

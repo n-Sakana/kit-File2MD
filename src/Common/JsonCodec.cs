@@ -471,7 +471,6 @@ namespace File2MD
                 var start = _position;
                 if (Take('-'))
                 {
-                    // Sign consumed.
                 }
 
                 if (Take('0'))
@@ -492,7 +491,6 @@ namespace File2MD
                 {
                     if (Take('+') || Take('-'))
                     {
-                        // Exponent sign consumed.
                     }
 
                     RequireDigits();

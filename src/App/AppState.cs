@@ -51,7 +51,7 @@ namespace File2MD
         {
             if (string.IsNullOrWhiteSpace(path))
             {
-                throw new ArgumentException("選ぶファイルまたはフォルダが指定されていません。", "path");
+                throw new ArgumentException("Select a file or folder.", "path");
             }
 
             var fullPath = Path.GetFullPath(path);
@@ -81,7 +81,7 @@ namespace File2MD
         {
             if (string.IsNullOrWhiteSpace(path))
             {
-                throw new ArgumentException("出力先が空です。", "path");
+                throw new ArgumentException("An output path is required.", "path");
             }
 
             lock (_gate)
@@ -93,7 +93,7 @@ namespace File2MD
                 }
             }
 
-            throw new ArgumentException("出力の種類が正しくありません。", "kind");
+            throw new ArgumentException("Invalid output type.", "kind");
         }
 
         public string ReadOutput(string kind)
@@ -106,7 +106,7 @@ namespace File2MD
                 }
             }
 
-            throw new ArgumentException("出力の種類が正しくありません。", "kind");
+            throw new ArgumentException("Invalid output type.", "kind");
         }
 
         private void SetSelection(string mode, FolderSnapshot snapshot)
@@ -126,7 +126,7 @@ namespace File2MD
         {
             if (mode != "markdown")
             {
-                throw new ArgumentException("選択の種類が正しくありません。", "mode");
+                throw new ArgumentException("Invalid selection mode.", "mode");
             }
             return mode;
         }

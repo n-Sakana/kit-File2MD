@@ -1,5 +1,3 @@
-// Backend regression suite. No NuGet test runner required.
-// dotnet run --project tests/File2MD.Regression.csproj -c Release
 // Keep C# 5 syntax so the source also compiles with Windows PowerShell 5.1.
 using System;
 using System.Collections.Generic;
@@ -124,7 +122,7 @@ namespace File2MD
                     "Windows dotfile leaked into Markdown candidates");
                 var windowsResult = MarkdownService.Convert(windowsFolder, new[] { "visible.cs" }, true, Path.Combine(_root, "markdown-windows-hidden"));
                 var windowsContent = File.ReadAllText(windowsResult.OutputPath);
-                Require(windowsContent.Contains(".gitignore</code> | 隠しファイル") && !windowsContent.Contains("bin/"),
+                Require(windowsContent.Contains(".gitignore</code> | Hidden file") && !windowsContent.Contains("bin/"),
                     "Windows dotfile must retain only its name in the report");
                 File.SetAttributes(hiddenFile, File.GetAttributes(hiddenFile) | FileAttributes.Hidden);
                 hiddenDirectory.Attributes |= FileAttributes.Hidden;
@@ -142,7 +140,7 @@ namespace File2MD
         {
             var input = Path.Combine(_root, "encodings");
             Directory.CreateDirectory(input);
-            // Fixed bytes for // 日本語\r\n, independent of the runtime's code-page provider.
+            // Fixed CP932 bytes avoid depending on the runtime's encoding provider.
             File.WriteAllBytes(Path.Combine(input, "cp932.cs"), new byte[] { 47, 47, 32, 0x93, 0xfa, 0x96, 0x7b, 0x8c, 0xea, 13, 10 });
             File.WriteAllText(Path.Combine(input, "utf8.cs"), "// 日本語\n", new UTF8Encoding(true));
             File.WriteAllText(Path.Combine(input, "utf16.cs"), "// 日本語\n", Encoding.Unicode);
@@ -236,16 +234,16 @@ namespace File2MD
             var result = MarkdownService.Convert(snapshot, selected, true, Path.Combine(_root, "markdown-omissions"));
             Require(result.ConvertedCount == 1 && result.FailedCount == 5 && result.FilesWritten == 1, "omission counts changed");
             var content = File.ReadAllText(result.OutputPath);
-            Require(content.Contains("## 対象外"), "omission section missing");
+            Require(content.Contains("## Omitted files"), "omission section missing");
             foreach (var row in new[] {
-                "assets/icon.svg</code> | 読ませたくない拡張子",
-                "assets/image.png</code> | バイナリまたは不正な文字コード",
-                "tail.cs</code> | バイナリまたは不正な文字コード",
-                "large.pdf</code> | 大きすぎる（既存の上限）",
-                "large.docx</code> | 大きすぎる（既存の上限）",
-                "broken.docx</code> | 変換に失敗した",
-                "gone.cs</code> | 変換に失敗した",
-                "unchecked.cs</code> | 未選択" }) Require(content.Contains(row), "missing omission: " + row);
+                "assets/icon.svg</code> | Excluded file extension",
+                "assets/image.png</code> | Binary data or invalid text encoding",
+                "tail.cs</code> | Binary data or invalid text encoding",
+                "large.pdf</code> | Exceeds the extraction size limit",
+                "large.docx</code> | Exceeds the extraction size limit",
+                "broken.docx</code> | Conversion failed",
+                "gone.cs</code> | Conversion failed",
+                "unchecked.cs</code> | Not selected" }) Require(content.Contains(row), "missing omission: " + row);
             Require(content.Contains("class Included {}") && !content.Contains("BODY_SENTINEL") && !content.Contains("\0"), "omitted contents leaked");
             Require(!content.Contains(input), "omission report contains an absolute path");
             Require(Directory.GetFiles(Path.GetDirectoryName(result.OutputPath)).Length == 1, "omissions written as separate files");
@@ -262,7 +260,7 @@ namespace File2MD
             var result = MarkdownService.Convert(snapshot, new string[0], true, Path.Combine(_root, "markdown-only-omissions"));
             Require(result.FilesWritten == 1 && result.ConvertedCount == 0 && result.FailedCount == 0, "exclusions-only export failed");
             var content = File.ReadAllText(result.OutputPath);
-            Require(content.Contains("icon.svg</code> | 読ませたくない拡張子") && !content.Contains("BODY_SENTINEL"), "exclusions-only report lost names");
+            Require(content.Contains("icon.svg</code> | Excluded file extension") && !content.Contains("BODY_SENTINEL"), "exclusions-only report lost names");
             Throws<ArgumentException>(delegate { MarkdownService.Convert(_source, new string[0], true, Path.Combine(_root, "no-selection")); });
             Throws<ArgumentException>(delegate { MarkdownService.Convert(_source, new[] { "../outside.cs" }, true, Path.Combine(_root, "bad-selection")); });
         }
@@ -275,7 +273,7 @@ namespace File2MD
             File.WriteAllText(Path.Combine(input, "a&b`[x].svg"), "EXCLUDED_BODY_SENTINEL");
             var result = MarkdownService.Convert(FolderCatalog.Inspect(input), new[] { "Program.cs" }, true, Path.Combine(_root, "markdown-many"));
             var content = File.ReadAllText(result.OutputPath);
-            Require(content.Contains("<details>") && content.Contains("121 件") && content.Contains("</details>"), "large list not folded");
+            Require(content.Contains("<details>") && content.Contains("121 omitted files") && content.Contains("</details>"), "large list not folded");
             for (var i = 0; i < 120; i++) Require(content.Contains("icon-" + i + ".svg</code>"), "omission list truncated: " + i);
             Require(content.Contains("a&amp;b&#96;&#91;x&#93;.svg"), "path markup not escaped");
             Require(!content.Contains("BODY_SENTINEL"), "excluded content leaked into large report");
@@ -295,8 +293,8 @@ namespace File2MD
             var content = File.ReadAllText(excluded.OutputPath);
             Require(excluded.ConvertedCount == 2 && excluded.FailedCount == 0, "bulk size exclusion boundary/count wrong");
             Require(content.Contains("SMALL_JSONL") && content.Contains("## boundary.jsonl"), "small or exactly 1 MB text omitted");
-            Require(content.Contains("large.jsonl</code> | 大きいファイル（1 MB 超・まとめて除外）")
-                && content.Contains("large.log</code> | 大きいファイル（1 MB 超・まとめて除外）"), "size exclusion reasons missing");
+            Require(content.Contains("large.jsonl</code> | Large file (over 1 MiB; excluded by size)")
+                && content.Contains("large.log</code> | Large file (over 1 MiB; excluded by size)"), "size exclusion reasons missing");
             Require(!content.Contains("LARGE_JSONL_BODY") && !content.Contains("LARGE_LOG_BODY"), "excluded large contents leaked");
             var included = MarkdownService.Convert(snapshot, names, true, Path.Combine(_root, "large-include"), null, false);
             content = File.ReadAllText(included.OutputPath);

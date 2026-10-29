@@ -33,7 +33,8 @@ foreach ($context in $script:Contexts) {
     Assert-True ($removeLines -contains ('[-' + $context + '\File2MD]')) 'Removal targets another application.'
 }
 $uninstall = [IO.File]::ReadAllText((Join-Path $root 'common/uninstall.ps1'))
-Assert-True ($uninstall.Contains('Build-RegistryLines $false')) 'Uninstall must use the same key definitions.'
+Assert-True ($uninstall.Contains("`$script:OwnKey = 'File2MD'")) 'Uninstaller application key must be File2MD.'
+Assert-True ($uninstall.Contains('function Backup-Registration')) 'Uninstall must back up before removing.'
 $originalItems = $script:MenuItems
 try {
     $script:MenuItems = @(1..17)

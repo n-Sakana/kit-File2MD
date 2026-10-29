@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,16 +25,16 @@
 
   </svg>
 
-  <a class="skip-link" href="#workspace">本文へ移動</a>
+  <a class="skip-link" href="#workspace">Skip to content</a>
 
   <div class="app-shell" id="appShell" data-role="loading">
-    <aside class="sidebar" aria-label="File2MD ナビゲーション">
+    <aside class="sidebar" aria-label="File2MD navigation">
       <div class="brand">File2MD</div>
-      <nav class="primary-nav" aria-label="機能">
+      <nav class="primary-nav" aria-label="Features">
 
         <button class="nav-item" type="button" data-page="markdown">
           <span class="nav-icon orange"><svg aria-hidden="true"><use href="#icon-markdown"></use></svg></span>
-          <span>Markdown 化</span>
+          <span>Markdown conversion</span>
         </button>
 
       </nav>
@@ -43,14 +43,14 @@
         <h2 class="side-caption" id="deviceHeading">Device</h2>
         <div class="device-row">
           <span class="device-dot" aria-hidden="true"></span>
-          <span id="deviceName">読み込み中</span>
+          <span id="deviceName">Loading…</span>
         </div>
 
       </section>
 
       <dl class="capability-list">
-        <div><dt>Word</dt><dd id="statusWord">確認中</dd></div>
-        <div><dt>Windows OCR</dt><dd id="statusOcr">確認中</dd></div>
+        <div><dt>Microsoft Word</dt><dd id="statusWord">Checking…</dd></div>
+        <div><dt>Windows</dt><dd id="statusOcr">Checking…</dd></div>
 
       </dl>
     </aside>
@@ -59,13 +59,13 @@
 
       <section class="page" data-page-panel="markdown" hidden aria-labelledby="markdownTitle">
         <div class="page-heading">
-          <h1 id="markdownTitle">Markdown 化</h1>
+          <h1 id="markdownTitle">Markdown conversion</h1>
           <div class="page-heading-controls">
             <div class="picker-actions">
-              <button class="small primary choose-files" type="button" data-picker-mode="markdown">ファイルを選ぶ</button>
-              <button class="small choose-folder" type="button" data-picker-mode="markdown">フォルダを選ぶ</button>
+              <button class="small primary choose-files" type="button" data-picker-mode="markdown">Choose files</button>
+              <button class="small choose-folder" type="button" data-picker-mode="markdown">Choose folder</button>
             </div>
-            <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="ダークにする">
+            <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Switch to dark theme">
               <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
                 <path d="M12 3.75a8.25 8.25 0 0 1 0 16.5Z" fill="currentColor"></path>
@@ -74,10 +74,10 @@
           </div>
         </div>
 
-        <section class="folder-card" aria-label="Markdown にするもの">
-          <div class="path-row"><span class="folder-path mono" data-folder-path="markdown">読み込み中</span></div>
+        <section class="folder-card" aria-label="Files and folders to convert">
+          <div class="path-row"><span class="folder-path mono" data-folder-path="markdown">Loading…</span></div>
           <div class="summary-bar">
-            <span><strong data-summary-count>0</strong> ファイル</span>
+            <span>Files: <strong data-summary-count>0</strong></span>
             <span class="summary-types" data-summary-types></span>
             <span class="summary-size" data-summary-size>0 B</span>
           </div>
@@ -85,33 +85,33 @@
 
         <div class="section-caption-row">
           <h2 class="section-caption">Contents</h2>
-          <div class="selection-actions" aria-label="Markdown にするファイルの一括選択">
-            <button type="button" data-selection-mode="markdown" data-selection-action="all" aria-controls="markdownFiles" disabled>すべて選択</button>
-            <button type="button" data-selection-mode="markdown" data-selection-action="none" aria-controls="markdownFiles" disabled>すべて解除</button>
+          <div class="selection-actions" aria-label="Select files for Markdown conversion">
+            <button type="button" data-selection-mode="markdown" data-selection-action="all" aria-controls="markdownFiles" disabled>Select all</button>
+            <button type="button" data-selection-mode="markdown" data-selection-action="none" aria-controls="markdownFiles" disabled>Clear selection</button>
           </div>
         </div>
-        <section class="file-table" aria-label="Markdown にするファイル">
-          <div class="file-head"><span>名前</span><span>サイズ</span><span>更新日時</span></div>
+        <section class="file-table" aria-label="Files to convert to Markdown">
+          <div class="file-head"><span>Name</span><span>Size</span><span>Modified</span></div>
           <div class="file-list tall" id="markdownFiles" data-mode="markdown" aria-live="polite"></div>
         </section>
 
         <h2 class="section-caption">Output</h2>
         <section class="settings-card">
-          <div class="setting-row"><span>出力先</span><span class="secondary mono" id="markdownOutput">.\output\対象名_YYYYMMDD-HHmm\1枚のMarkdown.md</span></div>
+          <div class="setting-row"><span>Destination</span><span class="secondary mono" id="markdownOutput">.\output\input_YYYYMMDD-HHmm\input.md</span></div>
           <div class="setting-row output-result" id="markdownResult" hidden>
-            <span>完了</span>
+            <span>Saved</span>
             <span class="secondary mono" id="markdownResultPath"></span>
           </div>
         </section>
         <div class="actions">
-          <button id="openMarkdownOutput" type="button" disabled>フォルダを開く</button>
-          <button class="primary" id="convertMarkdown" type="button" disabled>Markdown にする</button>
+          <button id="openMarkdownOutput" type="button" disabled>Open folder</button>
+          <button class="primary" id="convertMarkdown" type="button" disabled>Convert to Markdown</button>
         </div>
       </section>
 
     </main>
 
-    <nav class="mobile-nav" aria-label="機能">
+    <nav class="mobile-nav" aria-label="Features">
 
       <button type="button" data-page="markdown">
         <svg aria-hidden="true"><use href="#icon-markdown"></use></svg><span>Markdown</span>
@@ -122,14 +122,14 @@
 
   <dialog class="camera-help-dialog markdown-large-dialog" id="markdownLargeDialog" aria-labelledby="markdownLargeTitle">
     <form method="dialog">
-      <button class="markdown-large-close" value="cancel" aria-label="書き出しをやめて戻る">×</button>
-      <h2 id="markdownLargeTitle">大きいファイルが含まれています</h2>
+      <button class="markdown-large-close" value="cancel" aria-label="Cancel export">×</button>
+      <h2 id="markdownLargeTitle">Large files selected</h2>
       <p id="markdownLargeTotal"></p>
       <ul class="markdown-large-list" id="markdownLargeFiles"></ul>
-      <p>まとめて本文から外しますか。そのまま含めますか。外した場合も、名前は「対象外」に残ります。</p>
+      <p>Include or exclude the contents of these files. Excluded files are listed under “Omitted files”.</p>
       <div class="actions">
-        <button value="exclude" autofocus>外す</button>
-        <button class="primary" value="include">そのまま</button>
+        <button value="exclude" autofocus>Exclude all</button>
+        <button class="primary" value="include">Include all</button>
       </div>
     </form>
   </dialog>
@@ -137,6 +137,6 @@
   <div class="info-tooltip" id="infoTooltip" role="tooltip" hidden></div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <noscript>File2MD を使うには JavaScript を有効にしてください。</noscript>
+  <noscript>Enable JavaScript to use File2MD.</noscript>
 </body>
 </html>

@@ -8,8 +8,8 @@ $script:KeyName = "File2MD"
 $script:Launcher = Join-Path $PSScriptRoot "context-menu.vbs"
 $script:File2MDScript = Join-Path (Split-Path $PSScriptRoot -Parent) "File2MD.ps1"
 $script:MenuItems = @(
-    [pscustomobject]@{ Id = "01-open"; Label = "画面で開く"; Mode = "markdown" }
-    [pscustomobject]@{ Id = "02-convert"; Label = "Markdown にする"; Mode = "cli" }
+    [pscustomobject]@{ Id = "01-open"; Label = "Open"; Mode = "markdown" }
+    [pscustomobject]@{ Id = "02-convert"; Label = "Convert to Markdown"; Mode = "cli" }
 )
 $script:Contexts = @(
     "HKEY_CURRENT_USER\Software\Classes\*\shell",
@@ -28,7 +28,7 @@ function Assert-HkcuPath {
     if (-not $Path.StartsWith(
             "HKEY_CURRENT_USER\",
             [StringComparison]::OrdinalIgnoreCase)) {
-        throw "only HKCU registry paths are allowed"
+        throw "Only HKCU registry paths are allowed."
     }
 }
 
@@ -122,7 +122,7 @@ function Invoke-Install {
         "File2MD_install_" + [Guid]::NewGuid().ToString("N"))
     try {
         if (-not (Test-Path -LiteralPath $script:Launcher -PathType Leaf)) {
-            throw "context menu launcher not found: $script:Launcher"
+            throw "Context menu launcher not found: $script:Launcher"
         }
         if (-not (Test-Path -LiteralPath $script:File2MDScript -PathType Leaf)) {
             throw "File2MD launcher not found: $script:File2MDScript"
@@ -130,16 +130,16 @@ function Invoke-Install {
 
         New-Item -ItemType Directory -Path $temporaryRoot -Force | Out-Null
         if (-not (Import-RegistryLines (Build-RegistryLines $true) $temporaryRoot)) {
-            throw "registry import failed"
+            throw "Registry import failed."
         }
 
         Write-Host ""
-        Write-Host "File2MD was added to file, folder, Explorer background and desktop background context menus." -ForegroundColor Green
+        Write-Host '  File2MD was added to the right-click menu of files, folders, folder backgrounds and the desktop.' -ForegroundColor Green
         return $true
     }
     catch {
         Write-Host ""
-        Write-Host ("ERROR: " + $_.Exception.Message) -ForegroundColor Red
+        Write-Host ('  Error: ' + $_.Exception.Message) -ForegroundColor Red
         return $false
     }
     finally {

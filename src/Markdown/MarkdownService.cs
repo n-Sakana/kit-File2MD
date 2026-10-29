@@ -42,9 +42,9 @@ namespace File2MD
         {
             switch (result.FailureReason)
             {
-                case ExtractFailureReason.Binary: return "バイナリまたは不正な文字コード";
-                case ExtractFailureReason.TooLarge: return "大きすぎる（既存の上限）";
-                default: return "変換に失敗した";
+                case ExtractFailureReason.Binary: return "Binary data or invalid text encoding";
+                case ExtractFailureReason.TooLarge: return "Exceeds the extraction size limit";
+                default: return "Conversion failed";
             }
         }
 
@@ -54,12 +54,12 @@ namespace File2MD
         {
             if (source == null)
             {
-                throw new ArgumentException("入力が選ばれていません。", "source");
+                throw new ArgumentException("No input is selected.", "source");
             }
             if (selectedNames == null || (selectedNames.Count == 0 && !CanWriteOnlyOmissions(source)))
             {
                 throw new ArgumentException(
-                    "Markdown にするファイルを1つ以上選んでください。",
+                    "Select at least one file to convert to Markdown.",
                     "selectedNames");
             }
 
@@ -68,7 +68,7 @@ namespace File2MD
                 StringComparer.CurrentCultureIgnoreCase);
             if (requested.Count != selectedNames.Count)
             {
-                throw new ArgumentException("同じファイルが複数回指定されています。", "selectedNames");
+                throw new ArgumentException("The same file was selected more than once.", "selectedNames");
             }
 
             var files = new List<FolderFile>();
@@ -81,7 +81,7 @@ namespace File2MD
                 if (!file.MarkdownSupported)
                 {
                     throw new ArgumentException(
-                        string.Format("Markdown 化の対象外です: {0}", file.Name),
+                        string.Format("File is not supported for Markdown conversion: {0}", file.Name),
                         "selectedNames");
                 }
                 files.Add(file);
@@ -92,7 +92,7 @@ namespace File2MD
                 foreach (var missing in requested)
                 {
                     throw new ArgumentException(
-                        string.Format("現在の入力にないファイルです: {0}", missing),
+                        string.Format("File is not in the current input: {0}", missing),
                         "selectedNames");
                 }
             }
@@ -116,9 +116,9 @@ namespace File2MD
             foreach (var file in source.Files)
             {
                 if (!file.MarkdownSupported) omissions.Add(file, file.MarkdownExclusionReason);
-                else if (!selected.Contains(file)) omissions.Add(file, "未選択");
+                else if (!selected.Contains(file)) omissions.Add(file, "Not selected");
                 else if (excludeLargeFiles && file.Size > LargeFileBytes)
-                    omissions.Add(file, "大きいファイル（1 MB 超・まとめて除外）");
+                    omissions.Add(file, "Large file (over 1 MiB; excluded by size)");
             }
             var builder = new StringBuilder();
             builder.Append("# ");
@@ -150,7 +150,7 @@ namespace File2MD
                 else
                 {
                     var message = string.IsNullOrWhiteSpace(result.Notes)
-                        ? "内容を読み取れませんでした。"
+                        ? "Could not read the file contents."
                         : result.Notes;
                     omissions[file] = ExclusionReason(result);
                     failures.Add(new MarkdownFailure(file.Name, message));
@@ -174,12 +174,12 @@ namespace File2MD
             Dictionary<FolderFile, string> omissions)
         {
             if (omissions.Count == 0) return;
-            builder.AppendLine().AppendLine("## 対象外").AppendLine();
+            builder.AppendLine().AppendLine("## Omitted files").AppendLine();
             // Keep all names in the file; fold only their presentation for long lists.
             var fold = omissions.Count > 50;
             if (fold) builder.AppendLine("<details>").Append("<summary>")
-                .Append(omissions.Count).AppendLine(" 件（相対パスと理由）</summary>").AppendLine();
-            builder.AppendLine("| 相対パス | 理由 |").AppendLine("| --- | --- |");
+                .Append(omissions.Count).AppendLine(" omitted files (relative paths and reasons)</summary>").AppendLine();
+            builder.AppendLine("| Relative path | Reason |").AppendLine("| --- | --- |");
             foreach (var file in source.Files)
             {
                 string reason;
@@ -212,7 +212,7 @@ namespace File2MD
         private static void AppendContent(StringBuilder builder, FolderFile file, ExtractResult result)
         {
             var content = result.Content.TrimEnd('\r', '\n');
-            // Keep documents and the existing prose/table formats as Markdown.
+            // Documents and prose or tabular text do not need a code fence.
             if (result.Method != "text" || file.Extension == ".txt" || file.Extension == ".md"
                 || file.Extension == ".markdown" || file.Extension == ".csv"
                 || file.Extension == ".tsv" || file.Extension == ".log")
@@ -306,7 +306,7 @@ namespace File2MD
                     failures.Add(new MarkdownFailure(
                         file.Name,
                         string.IsNullOrWhiteSpace(result.Notes)
-                            ? "内容を読み取れませんでした。"
+                            ? "Could not read the file contents."
                             : result.Notes));
                     continue;
                 }
@@ -442,7 +442,7 @@ namespace File2MD
                     return candidate;
                 }
             }
-            throw new IOException("空いている出力ファイル名を作れませんでした。");
+            throw new IOException("Could not find an unused output file name.");
         }
 
         private static string FindAvailableDirectory(string requestedPath)
@@ -464,7 +464,7 @@ namespace File2MD
                     return candidate;
                 }
             }
-            throw new IOException("空いている出力フォルダ名を作れませんでした。");
+            throw new IOException("Could not find an unused output folder name.");
         }
 
         private static void WriteUtf8Atomically(string path, string content)
@@ -473,7 +473,7 @@ namespace File2MD
             if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
             {
                 throw new DirectoryNotFoundException(
-                    string.Format("出力先のフォルダがありません: {0}", directory));
+                    string.Format("Output folder not found: {0}", directory));
             }
 
             var temporaryPath = Path.Combine(

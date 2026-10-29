@@ -10,7 +10,7 @@ namespace File2MD
         {
             if (string.IsNullOrWhiteSpace(outputPath))
             {
-                throw new InvalidOperationException("先に出力を作ってください。");
+                throw new InvalidOperationException("Convert files before opening the output folder.");
             }
 
             var fullPath = Path.GetFullPath(outputPath);
@@ -25,12 +25,12 @@ namespace File2MD
             }
             else
             {
-                throw new FileNotFoundException("出力先が見つかりません。", fullPath);
+                throw new FileNotFoundException("Output not found.", fullPath);
             }
 
             if (string.IsNullOrWhiteSpace(directoryPath) || !Directory.Exists(directoryPath))
             {
-                throw new DirectoryNotFoundException("出力先のフォルダが見つかりません。");
+                throw new DirectoryNotFoundException("Output folder not found.");
             }
 
             ProcessStartInfo startInfo;

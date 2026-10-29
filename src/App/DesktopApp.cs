@@ -62,7 +62,7 @@ namespace File2MD
             if (!IsWebView2Available())
             {
                 ShowStartupMessage(
-                    "Microsoft Edge WebView2 Runtime が見つかりません。File2MD を起動するには WebView2 Runtime が必要です。",
+                    "Microsoft Edge WebView2 Runtime was not found. Install it to run File2MD.",
                     null);
                 return;
             }
@@ -92,7 +92,7 @@ namespace File2MD
             if (startupError != null)
             {
                 ShowStartupMessage(
-                    "File2MD の画面を開けませんでした。",
+                    "Could not open the File2MD window.",
                     startupError);
             }
         }

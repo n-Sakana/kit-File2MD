@@ -13,11 +13,11 @@ namespace File2MD
         {
             if (string.IsNullOrWhiteSpace(outputRoot))
             {
-                throw new ArgumentException("出力フォルダが指定されていません。", "outputRoot");
+                throw new ArgumentException("An output folder is required.", "outputRoot");
             }
             if (source == null || source.SourceKind == "none")
             {
-                throw new ArgumentException("入力が選ばれていません。", "source");
+                throw new ArgumentException("No input is selected.", "source");
             }
 
             return CreateRunDirectory(outputRoot, TargetName(source));
@@ -27,11 +27,11 @@ namespace File2MD
         {
             if (string.IsNullOrWhiteSpace(outputRoot))
             {
-                throw new ArgumentException("出力フォルダが指定されていません。", "outputRoot");
+                throw new ArgumentException("An output folder is required.", "outputRoot");
             }
             if (string.IsNullOrWhiteSpace(targetName))
             {
-                throw new ArgumentException("出力名が指定されていません。", "targetName");
+                throw new ArgumentException("An output name is required.", "targetName");
             }
 
             var root = Path.GetFullPath(outputRoot);
@@ -95,7 +95,7 @@ namespace File2MD
                 }
             }
 
-            throw new IOException("空いている出力フォルダ名を作れませんでした。");
+            throw new IOException("Could not find an unused output folder name.");
         }
     }
 }

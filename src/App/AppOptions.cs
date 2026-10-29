@@ -114,10 +114,10 @@ namespace File2MD
             writer.WriteLine();
             writer.WriteLine("  --port <number>             Local HTTP port (default: {0})", DefaultPort);
             writer.WriteLine("  --path <file-or-folder>     Input to show when File2MD starts");
-            writer.WriteLine("  --mode markdown             Page to show when File2MD starts");
-            writer.WriteLine("  --cli                       Convert Markdown in this console");
-            writer.WriteLine("  --no-browser                Run the HTTP server without the desktop window");
-            writer.WriteLine("  --help                      Show this help");
+            writer.WriteLine("  --mode markdown            Page to show when File2MD starts");
+            writer.WriteLine("  --cli                      Convert files to Markdown in this console");
+            writer.WriteLine("  --no-browser               Run the HTTP server without the desktop window");
+            writer.WriteLine("  --help                     Show this help");
         }
 
         private static string NextValue(string[] args, ref int index, string option)

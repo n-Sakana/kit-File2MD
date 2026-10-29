@@ -43,6 +43,6 @@ End If
 exitCode = shell.Run(command, 0, True)
 If exitCode <> 0 Then
     MsgBox _
-        "File2MD could not open.", _
+        "Could not open File2MD.", _
         vbExclamation, "File2MD"
 End If

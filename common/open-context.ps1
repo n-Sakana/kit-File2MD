@@ -76,7 +76,7 @@ try {
     $targetPath = $null
     if ($Mode -eq "markdown") {
         if ([string]::IsNullOrWhiteSpace($Target)) {
-            throw "the markdown-transfer target is missing"
+            throw "No file or folder was selected for Markdown conversion."
         }
         # A quoted root path ending in '\' can arrive with the final slash changed
         # to '"'. Windows paths cannot contain '"', so restoring it is unambiguous.
@@ -86,7 +86,7 @@ try {
 
         $targetPath = [IO.Path]::GetFullPath($Target)
         if (-not (Test-Path -LiteralPath $targetPath)) {
-            throw "selected item not found: $targetPath"
+            throw "Selected item not found: $targetPath"
         }
     }
 
@@ -102,7 +102,7 @@ try {
                 $running = $latest
             }
         }
-        throw "the running File2MD desktop window could not be activated"
+        throw "Could not activate the running File2MD desktop window."
     }
 
     $File2MDScript = Join-Path $script:File2MDRoot "File2MD.ps1"

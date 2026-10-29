@@ -217,7 +217,7 @@ namespace File2MD
             {
                 Close();
                 DesktopApp.ShowStartupMessage(
-                    "File2MD の画面を初期化できませんでした。",
+                    "Could not initialize the File2MD window.",
                     exception);
             }
         }

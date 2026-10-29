@@ -1,4 +1,4 @@
-"""Create minimal, anonymous document inputs using only the Python standard library."""
+"""Create document fixtures using the Python standard library."""
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 import struct

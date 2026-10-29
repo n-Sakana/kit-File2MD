@@ -40,7 +40,7 @@ namespace File2MD
         {
             if (paths == null || paths.Count == 0)
             {
-                throw new ArgumentException("選ぶファイルが指定されていません。", "paths");
+                throw new ArgumentException("Select at least one file.", "paths");
             }
 
             var files = new List<FolderFile>();
@@ -51,7 +51,7 @@ namespace File2MD
             {
                 if (string.IsNullOrWhiteSpace(path))
                 {
-                    throw new ArgumentException("空のファイル名は選べません。", "paths");
+                    throw new ArgumentException("File names cannot be empty.", "paths");
                 }
 
                 var fullPath = Path.GetFullPath(path);
@@ -75,7 +75,7 @@ namespace File2MD
                         : StringComparison.Ordinal))
                 {
                     throw new ArgumentException(
-                        "一度に選ぶファイルは同じフォルダに置かれている必要があります。",
+                        "Files selected together must be in the same folder.",
                         "paths");
                 }
 
@@ -107,10 +107,10 @@ namespace File2MD
             if (MarkdownExcludedExtensions.Contains(extension)
                 || extension.StartsWith(".bak-", StringComparison.Ordinal)
                 || extension.StartsWith(".bak_", StringComparison.Ordinal))
-                return "読ませたくない拡張子";
+                return "Excluded file extension";
             if (MarkdownDocumentExtensions.Contains(extension)) return null;
-            // Keep unsupported legacy Office formats on their existing document route.
-            if (KindFor(extension, false) != "Other") return "未対応の文書形式";
+            // Unsupported document formats must not be probed as plain text.
+            if (KindFor(extension, false) != "Other") return "Unsupported document format";
             var probe = File2MD.Documents.Extract.ProbeTextFile(path);
             return probe.Succeeded ? null : MarkdownService.ExclusionReason(probe);
         }
@@ -257,7 +257,7 @@ namespace File2MD
             // Windows dotfiles may lack the Hidden attribute. Keep their names
             // in the catalogue, but do not ingest them implicitly as Markdown.
             var markdownExclusion = fromFolder && file.Name.StartsWith(".", StringComparison.Ordinal)
-                ? "隠しファイル" : MarkdownExclusionFor(file.FullName);
+                ? "Hidden file" : MarkdownExclusionFor(file.FullName);
             return new FolderFile(
                 file.FullName,
                 name,

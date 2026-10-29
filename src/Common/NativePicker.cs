@@ -42,7 +42,7 @@ namespace File2MD
             }
 
             throw new PlatformNotSupportedException(
-                "OS のフォルダ選択ダイアログはこの環境では使えません。");
+                "The system folder picker is unavailable in this environment.");
         }
 
         public static Task<List<string>> PickFilesAsync(string initialPath, string mode)
@@ -60,7 +60,7 @@ namespace File2MD
             }
 
             throw new PlatformNotSupportedException(
-                "OS のファイル選択ダイアログはこの環境では使えません。");
+                "The system file picker is unavailable in this environment.");
         }
 
         private static Task<T> RunSta<T>(Func<T> operation, string name)
@@ -98,8 +98,8 @@ namespace File2MD
                 uint options;
                 dialog.GetOptions(out options);
                 dialog.SetOptions(options | FosPickFolders | FosForceFileSystem | FosPathMustExist);
-                dialog.SetTitle("フォルダを選ぶ");
-                dialog.SetOkButtonLabel("このフォルダを選ぶ");
+                dialog.SetTitle("Choose folder");
+                dialog.SetOkButtonLabel("Select this folder");
                 SetInitialFolder(dialog, initialPath, out initialFolder);
 
                 if (owner != IntPtr.Zero)
@@ -145,7 +145,7 @@ namespace File2MD
                 dialog.SetOptions(
                     options | FosForceFileSystem | FosPathMustExist | FosFileMustExist);
                 dialog.SetTitle(FilePickerTitle(mode));
-                dialog.SetOkButtonLabel("選ぶ");
+                dialog.SetOkButtonLabel("Select");
 
                 var filter = new[]
                 {
@@ -219,7 +219,7 @@ namespace File2MD
                 {
                     "--file-selection",
                     "--directory",
-                    "--title=フォルダを選ぶ"
+                    "--title=Choose folder"
                 };
                 AddZenityInitialPath(arguments, initialPath);
                 return FirstOutputLine(RunDialog(zenity, arguments));
@@ -235,12 +235,12 @@ namespace File2MD
                         "--getexistingdirectory",
                         InitialDirectory(initialPath),
                         "--title",
-                        "フォルダを選ぶ"
+                        "Choose folder"
                     }));
             }
 
             throw new PlatformNotSupportedException(
-                "zenity または kdialog が見つかりません。");
+                "Neither zenity nor kdialog was found.");
         }
 
         private static List<string> PickLinuxFiles(string initialPath, string mode)
@@ -265,7 +265,7 @@ namespace File2MD
                 if (kdialog == null)
                 {
                     throw new PlatformNotSupportedException(
-                        "zenity または kdialog が見つかりません。");
+                        "Neither zenity nor kdialog was found.");
                 }
 
                 output = RunDialog(
@@ -317,7 +317,7 @@ namespace File2MD
             {
                 if (process == null)
                 {
-                    throw new IOException("OS の選択ダイアログを起動できませんでした。");
+                    throw new IOException("Could not open the system picker.");
                 }
 
                 var output = process.StandardOutput.ReadToEnd();
@@ -333,7 +333,7 @@ namespace File2MD
                 }
 
                 throw new IOException(string.IsNullOrWhiteSpace(error)
-                    ? "OS の選択ダイアログが失敗しました。"
+                    ? "The system picker failed."
                     : error.Trim());
             }
         }
@@ -377,18 +377,18 @@ namespace File2MD
         {
             if (string.Equals(mode, "markdown", StringComparison.OrdinalIgnoreCase))
             {
-                return "Markdown にするファイルを選ぶ";
+                return "Choose files to convert to Markdown";
             }
-            return "送るファイルを選ぶ";
+            return "Choose files";
         }
 
         private static string FilePickerFilterName(string mode)
         {
             if (string.Equals(mode, "markdown", StringComparison.OrdinalIgnoreCase))
             {
-                return "Markdown 化できるファイル";
+                return "Files supported for Markdown conversion";
             }
-            return "すべてのファイル";
+            return "All files";
         }
 
         private static string FindCommand(string name)

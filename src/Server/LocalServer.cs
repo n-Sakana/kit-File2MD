@@ -157,14 +157,14 @@ namespace File2MD
             {
                 errorStatus = HttpStatusCode.Forbidden;
                 error = new ErrorBody(string.Format(
-                    "このフォルダは開けません: {0}",
+                    "Cannot open this folder: {0}",
                     exception.Message));
             }
             catch (IOException exception)
             {
                 errorStatus = HttpStatusCode.BadRequest;
                 error = new ErrorBody(string.Format(
-                    "フォルダを読めません: {0}",
+                    "Cannot read this folder: {0}",
                     exception.Message));
             }
             catch (Exception exception)
@@ -175,7 +175,7 @@ namespace File2MD
                     context.Request.HttpMethod,
                     context.Request.RawUrl,
                     exception);
-                error = new ErrorBody("File2MD の処理中にエラーが起きました。");
+                error = new ErrorBody("File2MD encountered an error.");
             }
 
             if (error != null)
@@ -267,7 +267,7 @@ namespace File2MD
 
             if (request.HttpMethod == "POST" && path == "/api/activate")
             {
-                RequireLocal(role, "右クリックから開く操作はこの PC で実行してください。");
+                RequireLocal(role, "Open items from the context menu on this computer.");
 
                 int expectedProcessId;
                 var currentProcessId = GetCurrentProcessId();
@@ -291,7 +291,7 @@ namespace File2MD
                     if (!body.ContainsKey("mode") || !body.ContainsKey("path"))
                     {
                         throw new ArgumentException(
-                            "右クリックの対象と機能を両方指定してください。");
+                            "Specify both the context menu target and mode.");
                     }
                     mode = ReadMode(ReadString(body, "mode"));
                     selectedPath = ReadString(body, "path");
@@ -305,7 +305,7 @@ namespace File2MD
                     await WriteJsonAsync(
                         context,
                         HttpStatusCode.ServiceUnavailable,
-                        new ErrorBody("File2MD のデスクトップ画面はまだ利用できません。"));
+                        new ErrorBody("The File2MD desktop window is not ready."));
                     return;
                 }
 
@@ -324,7 +324,7 @@ namespace File2MD
                     await WriteJsonAsync(
                         context,
                         HttpStatusCode.Forbidden,
-                        new ErrorBody("File2MD はこの PC で使ってください。"));
+                        new ErrorBody("Use File2MD on this computer."));
                     return;
                 }
                 await WriteJsonAsync(context, HttpStatusCode.OK, _state.ReadFolder(mode));
@@ -338,7 +338,7 @@ namespace File2MD
                     await WriteJsonAsync(
                         context,
                         HttpStatusCode.Forbidden,
-                        new ErrorBody("フォルダは PC 側で選んでください。"));
+                        new ErrorBody("Select folders on this computer."));
                     return;
                 }
 
@@ -348,7 +348,7 @@ namespace File2MD
                 var selectedPath = body.TryGetValue("path", out pathValue) ? pathValue as string : null;
                 if (string.IsNullOrWhiteSpace(selectedPath))
                 {
-                    throw new ArgumentException("選ぶフォルダが指定されていません。");
+                    throw new ArgumentException("Select a folder.");
                 }
 
                 await WriteJsonAsync(
@@ -365,7 +365,7 @@ namespace File2MD
                     await WriteJsonAsync(
                         context,
                         HttpStatusCode.Forbidden,
-                        new ErrorBody("フォルダは PC 側で選んでください。"));
+                        new ErrorBody("Select folders on this computer."));
                     return;
                 }
 
@@ -374,7 +374,7 @@ namespace File2MD
                     await WriteJsonAsync(
                         context,
                         HttpStatusCode.NotImplemented,
-                        new ErrorBody("OS のフォルダ選択ダイアログはこの環境では使えません。"));
+                        new ErrorBody("The system folder picker is unavailable in this environment."));
                     return;
                 }
 
@@ -407,7 +407,7 @@ namespace File2MD
                     await WriteJsonAsync(
                         context,
                         HttpStatusCode.Forbidden,
-                        new ErrorBody("ファイルは PC 側で選んでください。"));
+                        new ErrorBody("Select files on this computer."));
                     return;
                 }
 
@@ -416,7 +416,7 @@ namespace File2MD
                     await WriteJsonAsync(
                         context,
                         HttpStatusCode.NotImplemented,
-                        new ErrorBody("OS のファイル選択ダイアログはこの環境では使えません。"));
+                        new ErrorBody("The system file picker is unavailable in this environment."));
                     return;
                 }
 
@@ -450,7 +450,7 @@ namespace File2MD
                     await WriteJsonAsync(
                         context,
                         HttpStatusCode.Forbidden,
-                        new ErrorBody("Markdown 化は PC 側で実行してください。"));
+                        new ErrorBody("Convert files to Markdown on this computer."));
                     return;
                 }
 
@@ -479,13 +479,13 @@ namespace File2MD
 
             if (request.HttpMethod == "POST" && path == "/api/open-output")
             {
-                RequireLocal(role, "出力先は PC 側で開いてください。");
+                RequireLocal(role, "Open the output folder on this computer.");
                 var body = JsonCodec.ParseObject(await ReadBodyAsync(request));
                 var kind = ReadString(body, "kind");
                 var outputPath = _state.ReadOutput(kind);
                 if (string.IsNullOrWhiteSpace(outputPath))
                 {
-                    throw new ArgumentException("先に出力を作ってください。");
+                    throw new ArgumentException("Convert files before opening the output folder.");
                 }
                 var openedPath = await Task.Run(delegate
                 {
@@ -550,7 +550,7 @@ namespace File2MD
             }
             if (mode != "markdown")
             {
-                throw new ArgumentException("ファイルを選ぶ機能が正しく指定されていません。");
+                throw new ArgumentException("Invalid file selection mode.");
             }
             return mode;
         }
@@ -565,7 +565,7 @@ namespace File2MD
                 : null;
             if (raw == null)
             {
-                throw new ArgumentException("ファイルの一覧が指定されていません。");
+                throw new ArgumentException("A file list is required.");
             }
 
             var result = new List<string>();
@@ -574,7 +574,7 @@ namespace File2MD
                 var text = item as string;
                 if (string.IsNullOrWhiteSpace(text))
                 {
-                    throw new ArgumentException("ファイル名が正しくありません。");
+                    throw new ArgumentException("Invalid file name.");
                 }
                 result.Add(text);
             }
@@ -589,7 +589,7 @@ namespace File2MD
             var result = body.TryGetValue(propertyName, out value) ? value as string : null;
             if (string.IsNullOrWhiteSpace(result))
             {
-                throw new ArgumentException("必要な指定がありません: " + propertyName);
+                throw new ArgumentException("Required value is missing: " + propertyName);
             }
             return result;
         }
@@ -601,7 +601,7 @@ namespace File2MD
             object value;
             if (!body.TryGetValue(propertyName, out value) || value == null)
             {
-                throw new ArgumentException("必要な指定がありません: " + propertyName);
+                throw new ArgumentException("Required value is missing: " + propertyName);
             }
 
             try
@@ -613,7 +613,7 @@ namespace File2MD
             catch (Exception exception)
             {
                 throw new ArgumentException(
-                    "数値の指定が正しくありません: " + propertyName,
+                    "Invalid numeric value: " + propertyName,
                     exception);
             }
         }

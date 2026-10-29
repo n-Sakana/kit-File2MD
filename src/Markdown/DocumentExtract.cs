@@ -37,13 +37,8 @@ namespace File2MD.Documents
         }
     }
 
-    // Text out of files, with no Office and no network involved.
-    //
-    // The OpenXML readers are a port of the ones in ToolRack's md-extract,
-    // which have been in daily use; the limits they carry (entry counts, part
-    // sizes, no DTDs, no external resolver) are the reason a hostile .docx
-    // cannot turn a scan into a hang or a fetch, so they are ported with the
-    // limits intact rather than trimmed.
+    // Extracts text locally without Office. OpenXML entry and XML size limits
+    // bound package reads; DTDs and external XML resolution are disabled.
     public static class Extract
     {
         private const long MaxXmlEntryBytes = 64L * 1024L * 1024L;
@@ -70,7 +65,7 @@ namespace File2MD.Documents
                         }
                         return ExtractResult.Failure(
                             "none",
-                            "旧形式の Word (" + ext + ") はテキスト抽出に対応していません。");
+                            "Text extraction is not supported for this Word format (" + ext + ").");
                     case "excel":
                         if (ext == ".xlsx" || ext == ".xlsm")
                         {
@@ -78,7 +73,7 @@ namespace File2MD.Documents
                         }
                         return ExtractResult.Failure(
                             "none",
-                            "旧形式の Excel (" + ext + ") はテキスト抽出に対応していません。");
+                            "Text extraction is not supported for this Excel format (" + ext + ").");
                     case "powerpoint":
                         if (ext == ".pptx" || ext == ".pptm")
                         {
@@ -86,17 +81,17 @@ namespace File2MD.Documents
                         }
                         return ExtractResult.Failure(
                             "none",
-                            "旧形式の PowerPoint (" + ext + ") はテキスト抽出に対応していません。");
+                            "Text extraction is not supported for this PowerPoint format (" + ext + ").");
                     case "pdf":
                         return PdfText.Read(fullPath);
                     case "image":
                         return ExtractResult.Failure(
                             "none",
-                            "画像はそのまま添付します（テキスト抽出はしません）。");
+                            "Text extraction from images is not supported.");
                     default:
                         return ExtractResult.Failure(
                             "none",
-                            "テキスト抽出には対応していない種類です。");
+                            "Text extraction is not supported for this file type.");
                 }
             }
             catch (ExtractionSizeLimitException ex)
@@ -107,12 +102,12 @@ namespace File2MD.Documents
             {
                 return ExtractResult.Failure(
                     "error",
-                    "抽出に失敗しました: " + ex.GetType().Name + " " + ex.Message);
+                    "Text extraction failed: " + ex.GetType().Name + " " + ex.Message);
             }
         }
 
-        // Catalogue only a bounded prefix. The full contents are validated again
-        // at export, so a binary tail or a file changed after selection cannot leak.
+        // Probe a bounded prefix during folder scans. Validate the full file at
+        // export to detect binary data beyond the prefix or changes since selection.
         public static bool IsTextFile(string path)
         {
             return ProbeTextFile(path).Succeeded;
@@ -136,8 +131,8 @@ namespace File2MD.Documents
             catch (UnauthorizedAccessException ex) { return ExtractResult.Failure("error", ex.Message); }
         }
 
-        // Preserve the existing BOM -> UTF-8 -> CP932 order, but never substitute
-        // malformed bytes. All text admission and extraction use this same decoder.
+        // Try the BOM encoding, then UTF-8, then CP932. Reject malformed bytes
+        // rather than substituting characters during detection or extraction.
         public static ExtractResult ReadTextFile(string path)
         {
             byte[] bytes = File.ReadAllBytes(path);
@@ -163,7 +158,7 @@ namespace File2MD.Documents
             }
             catch (DecoderFallbackException)
             {
-                return ExtractResult.Failure("text", "文字コードを正しく読み取れません。", ExtractFailureReason.Binary);
+                return ExtractResult.Failure("text", "Could not decode the text.", ExtractFailureReason.Binary);
             }
         }
 
@@ -178,7 +173,7 @@ namespace File2MD.Documents
             {
                 char c = chars[i];
                 if (c == '\ufffd' || (char.IsControl(c) && c != '\t' && c != '\r' && c != '\n' && c != '\f'))
-                    return ExtractResult.Failure("text", "バイナリまたは不正な文字を含むため、テキストとして読み取れません。", ExtractFailureReason.Binary);
+                    return ExtractResult.Failure("text", "Cannot read this file as text: it contains binary data or invalid characters.", ExtractFailureReason.Binary);
             }
             return new ExtractResult { Content = new string(chars, 0, length), Method = "text", Notes = name, Succeeded = true };
         }
@@ -189,8 +184,8 @@ namespace File2MD.Documents
 
             private static Encoding Create()
             {
-                // .NET Framework already has CP932; modern .NET registers its
-                // built-in provider on Windows PowerShell.
+                // .NET Framework includes CP932. Modern .NET requires the
+                // code-page provider; reflection keeps this source compatible with both.
                 var provider = Type.GetType("System.Text.CodePagesEncodingProvider, System.Text.Encoding.CodePages", false);
                 if (provider != null)
                 {
@@ -239,11 +234,11 @@ namespace File2MD.Documents
             ExtractResult result = new ExtractResult();
             result.Content = TrimEndLines(builder.ToString());
             result.Method = "word-openxml";
-            result.Notes = "パート数: " + partCount.ToString(CultureInfo.InvariantCulture);
+            result.Notes = "Parts: " + partCount.ToString(CultureInfo.InvariantCulture);
             result.Succeeded = true;
             if (string.IsNullOrWhiteSpace(result.Content))
             {
-                result.Notes += "; テキストは取れませんでした";
+                result.Notes += "; no text was extracted";
                 result.Succeeded = false;
             }
             return result;
@@ -270,7 +265,7 @@ namespace File2MD.Documents
                     {
                         builder.AppendLine();
                     }
-                    builder.AppendLine("## スライド " +
+                    builder.AppendLine("## Slide " +
                         number.ToString(CultureInfo.InvariantCulture));
                     AppendPresentationXml(entry, builder);
                     slideCount++;
@@ -287,7 +282,7 @@ namespace File2MD.Documents
                     {
                         builder.AppendLine();
                     }
-                    builder.AppendLine("## ノート " +
+                    builder.AppendLine("## Notes " +
                         number.ToString(CultureInfo.InvariantCulture));
                     AppendPresentationXml(entry, builder);
                     noteCount++;
@@ -298,12 +293,12 @@ namespace File2MD.Documents
             result.Content = TrimEndLines(builder.ToString());
             result.Method = "powerpoint-openxml";
             result.Notes =
-                "スライド: " + slideCount.ToString(CultureInfo.InvariantCulture) +
-                "; ノート: " + noteCount.ToString(CultureInfo.InvariantCulture);
+                "Slides: " + slideCount.ToString(CultureInfo.InvariantCulture) +
+                "; notes: " + noteCount.ToString(CultureInfo.InvariantCulture);
             result.Succeeded = true;
             if (string.IsNullOrWhiteSpace(result.Content))
             {
-                result.Notes += "; テキストは取れませんでした";
+                result.Notes += "; no text was extracted";
                 result.Succeeded = false;
             }
             return result;
@@ -345,7 +340,7 @@ namespace File2MD.Documents
                     {
                         builder.AppendLine();
                     }
-                    builder.AppendLine("## シート: " + sheet.Name);
+                    builder.AppendLine("## Sheet: " + sheet.Name);
                     AppendWorksheetXml(entry, sharedStrings, builder);
                     sheetCount++;
                 }
@@ -354,11 +349,11 @@ namespace File2MD.Documents
             ExtractResult result = new ExtractResult();
             result.Content = TrimEndLines(builder.ToString());
             result.Method = "excel-openxml";
-            result.Notes = "シート: " + sheetCount.ToString(CultureInfo.InvariantCulture);
+            result.Notes = "Sheets: " + sheetCount.ToString(CultureInfo.InvariantCulture);
             result.Succeeded = true;
             if (string.IsNullOrWhiteSpace(result.Content))
             {
-                result.Notes += "; テキストは取れませんでした";
+                result.Notes += "; no text was extracted";
                 result.Succeeded = false;
             }
             return result;
@@ -419,19 +414,19 @@ namespace File2MD.Documents
         {
             if (entryName.EndsWith("/document.xml", StringComparison.OrdinalIgnoreCase))
             {
-                return "本文";
+                return "Body";
             }
             if (entryName.EndsWith("/footnotes.xml", StringComparison.OrdinalIgnoreCase))
             {
-                return "脚注";
+                return "Footnotes";
             }
             if (entryName.EndsWith("/endnotes.xml", StringComparison.OrdinalIgnoreCase))
             {
-                return "文末脚注";
+                return "Endnotes";
             }
             if (entryName.EndsWith("/comments.xml", StringComparison.OrdinalIgnoreCase))
             {
-                return "コメント";
+                return "Comments";
             }
             return entryName;
         }

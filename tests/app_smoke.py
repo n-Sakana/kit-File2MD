@@ -1,4 +1,4 @@
-"""Run a built File2MD against real HTTP and Chromium. All artifacts stay in this repo."""
+"""Test a built File2MD through HTTP and Chromium."""
 import json, os, shutil, socket, subprocess, time, urllib.request, urllib.error
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
@@ -32,7 +32,7 @@ try:
         api(path, {}, 404)
     api('/api/folder?mode=optical', expected=400)
     api('/api/folder?mode=vba', expected=400)
-    print('PASS application identity and removed APIs/modes')
+    print('PASS application identity and rejection of unsupported APIs and modes')
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True, executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE') or shutil.which('google-chrome') or shutil.which('chromium'), args=['--no-sandbox'])
         page = browser.new_page(service_workers='block')
@@ -66,7 +66,7 @@ try:
         print('PASS grouped large-file cancel/exclude/include against real API')
         only=ARTIFACTS/'omissions-only';only.mkdir(exist_ok=True);(only/'omit.svg').write_text('<svg/>')
         api('/api/folder', {'mode':'markdown','path':str(only)})
-        page.reload();expect(page.locator("#convertMarkdown")).to_have_text("対象外の一覧を書き出す")
+        page.reload();expect(page.locator("#convertMarkdown")).to_have_text("Export omitted file list")
         with page.expect_response('**/api/markdown') as reply:page.click('#convertMarkdown')
         assert 'omit.svg' in Path(reply.value.json()['outputPath']).read_text(encoding='utf-8-sig')
         assert not errors,errors
@@ -77,7 +77,7 @@ try:
     import threading
     class Foreign(BaseHTTPRequestHandler):
         def do_GET(self):
-            body=json.dumps(dict(status, application='FileXfer', processId=os.getpid())).encode()
+            body=json.dumps(dict(status, application='UnrelatedApp', processId=os.getpid())).encode()
             self.send_response(200);self.end_headers();self.wfile.write(body)
         def log_message(self,*args):pass
     foreign=ThreadingHTTPServer(('127.0.0.1',0),Foreign)

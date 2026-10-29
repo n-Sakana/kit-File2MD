@@ -8,15 +8,8 @@ using System.Text.RegularExpressions;
 
 namespace File2MD.Documents
 {
-    // Text out of a PDF without Acrobat, without Word, and without a native
-    // library to ship.
-    //
-    // This is deliberately a reader and not a renderer: it finds the page
-    // content streams, decompresses them, runs the text-showing operators and
-    // maps the character codes back through each font's ToUnicode table. It
-    // gets ordinary text documents right and says so honestly when it cannot -
-    // and because every PDF is also turned into page images for the AI, an
-    // imperfect text layer never becomes a silent loss.
+    // Extracts text from PDF content streams using text operators and font
+    // ToUnicode maps. Does not render pages or perform OCR.
     public static class PdfText
     {
         private const int MaxObjects = 200000;
@@ -42,14 +35,14 @@ namespace File2MD.Documents
             {
                 return ExtractResult.Failure(
                     "pdf-builtin",
-                    "PDF が大きすぎます（512 MiB まで）。", ExtractFailureReason.TooLarge);
+                    "PDF exceeds the 512 MiB size limit.", ExtractFailureReason.TooLarge);
             }
 
             byte[] bytes = File.ReadAllBytes(path);
             if (bytes.Length < 5 ||
                 bytes[0] != '%' || bytes[1] != 'P' || bytes[2] != 'D' || bytes[3] != 'F')
             {
-                return ExtractResult.Failure("pdf-builtin", "PDF として読めません。");
+                return ExtractResult.Failure("pdf-builtin", "Could not read this file as a PDF.");
             }
 
             string latin = Latin1(bytes);
@@ -60,7 +53,7 @@ namespace File2MD.Documents
             {
                 return ExtractResult.Failure(
                     "pdf-builtin",
-                    "暗号化された PDF はテキスト抽出に対応していません。");
+                    "Text extraction from encrypted PDFs is not supported.");
             }
 
             List<PdfObject> pages = OrderPages(objects);
@@ -68,7 +61,7 @@ namespace File2MD.Documents
             {
                 return ExtractResult.Failure(
                     "pdf-builtin",
-                    "ページが見つかりませんでした。");
+                    "No pages were found.");
             }
 
             StringBuilder builder = new StringBuilder();
@@ -89,12 +82,12 @@ namespace File2MD.Documents
                 {
                     builder.AppendLine();
                 }
-                builder.AppendLine("## ページ " +
+                builder.AppendLine("## Page " +
                     pageNumber.ToString(CultureInfo.InvariantCulture));
                 if (string.IsNullOrWhiteSpace(text))
                 {
                     emptyPages++;
-                    builder.AppendLine("(このページからテキストは取れませんでした)");
+                    builder.AppendLine("(No text could be extracted from this page.)");
                 }
                 else
                 {
@@ -106,18 +99,17 @@ namespace File2MD.Documents
             result.Content = builder.ToString().TrimEnd('\r', '\n', ' ', '\t');
             result.Method = "pdf-builtin";
             result.Succeeded = emptyPages < pageNumber;
-            result.Notes = "ページ: " + pageNumber.ToString(CultureInfo.InvariantCulture);
+            result.Notes = "Pages: " + pageNumber.ToString(CultureInfo.InvariantCulture);
             if (emptyPages > 0)
             {
-                result.Notes += "; テキストを取れなかったページ: " +
+                result.Notes += "; pages without extracted text: " +
                     emptyPages.ToString(CultureInfo.InvariantCulture) +
-                    "（ページ画像で補います）";
+                    " (OCR is not available)";
             }
             return result;
         }
 
-        // Latin-1 keeps one byte as one char, so a regex can walk the file
-        // without a decoder inventing or dropping anything.
+        // Latin-1 preserves byte offsets when scanning the file with regular expressions.
         private static string Latin1(byte[] bytes)
         {
             return Encoding.GetEncoding(28591).GetString(bytes);
@@ -128,10 +120,8 @@ namespace File2MD.Documents
             return Encoding.GetEncoding(28591).GetBytes(text);
         }
 
-        // The cross-reference table is skipped on purpose. A file that has
-        // been appended to, or repaired, or written by a generator with a
-        // slightly wrong xref still has its objects where they say they are,
-        // and scanning for them reads all of those.
+        // Scan object declarations instead of relying on cross-reference offsets,
+        // which may be inaccurate in damaged or incrementally updated files.
         private static Dictionary<int, PdfObject> ScanObjects(byte[] bytes, string latin)
         {
             Dictionary<int, PdfObject> objects = new Dictionary<int, PdfObject>();
@@ -201,9 +191,8 @@ namespace File2MD.Documents
             int dataStart,
             int bodyEnd)
         {
-            // A direct /Length is the fast and correct answer. It is still
-            // checked against the endstream marker, because a wrong length is
-            // exactly the kind of damage this reader is meant to survive.
+            // Verify a direct /Length against endstream before using it;
+            // damaged files may report an incorrect stream length.
             Match lengthMatch = Regex.Match(
                 dictionary, @"/Length\s+(\d+)(?!\s+\d+\s+R)", RegexOptions.CultureInvariant);
             if (lengthMatch.Success)
@@ -242,9 +231,8 @@ namespace File2MD.Documents
             return end;
         }
 
-        // PDF 1.5 and later pack most dictionaries into compressed object
-        // streams, and Word writes those. Without unpacking them the page tree
-        // and the fonts simply are not there.
+        // PDF 1.5 object streams can contain the page and font dictionaries.
+        // Expand them before resolving references.
         private static void ExpandObjectStreams(Dictionary<int, PdfObject> objects)
         {
             List<PdfObject> streams = new List<PdfObject>();
@@ -341,9 +329,7 @@ namespace File2MD.Documents
             List<PdfObject> ordered = new List<PdfObject>();
             HashSet<int> seen = new HashSet<int>();
 
-            // The page tree gives the reading order. When it is missing or
-            // broken, object order is a poor but predictable substitute, and
-            // the page headings still say which page each block came from.
+            // Use page-tree order when available; otherwise fall back to object numbers.
             foreach (KeyValuePair<int, PdfObject> pair in objects)
             {
                 if (Regex.IsMatch(pair.Value.Dictionary, @"/Type\s*/Catalog\b"))
@@ -778,8 +764,7 @@ namespace File2MD.Documents
                 filters.IndexOf("JPXDecode", StringComparison.Ordinal) >= 0 ||
                 filters.IndexOf("CCITTFaxDecode", StringComparison.Ordinal) >= 0)
             {
-                // Not text, or a compression this reader does not implement.
-                // Returning nothing is honest; the page images still carry it.
+                // Image data and unsupported compression formats cannot yield text here.
                 return null;
             }
 
@@ -1030,8 +1015,7 @@ namespace File2MD.Documents
             return output.ToArray();
         }
 
-        // The content stream, run for its text-showing operators only. Nothing
-        // is painted: positioning is used just to decide where a line ends.
+        // Interpret text operators without rendering; use positioning to infer line breaks.
         private static string RenderTextOperators(
             string content,
             Dictionary<string, PdfFont> fonts)

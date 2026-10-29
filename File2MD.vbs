@@ -1,7 +1,5 @@
-' This file must stay pure ASCII. wscript.exe reads a .vbs as the system ANSI
-' code page unless it starts with a UTF-16 byte order mark, so a non-ASCII
-' character saved as UTF-8 makes the whole script fail to compile. Japanese
-' wording therefore lives in README.md and in the log file, not here.
+' Keep this file ASCII: wscript.exe reads scripts without a UTF-16 byte order
+' mark using the system ANSI code page.
 
 Option Explicit
 
